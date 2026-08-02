@@ -9,3 +9,4 @@ anland/0001-backends-anland-Add-current-Anland-transport.patch
 anland/0002-backends-anland-Add-headless-native-backend-selection.patch
 anland/0003-backends-anland-Add-virtual-output-and-reconnect-state.patch
 anland/0004-backends-anland-Render-directly-into-consumer-buffers.patch
+anland/0005-backends-anland-Handle-input-and-runtime-refresh.patch
