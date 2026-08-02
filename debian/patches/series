@@ -6,3 +6,4 @@ workarounds/Mark-several-additional-tests-as-flaky.patch
 workarounds/tests-Install-stacking-tests-into-a-subdirectory.patch
 clutter-Repick-actors-when-touches-emulate-button-clicks.patch
 anland/0001-backends-anland-Add-current-Anland-transport.patch
+anland/0002-backends-anland-Add-headless-native-backend-selection.patch
