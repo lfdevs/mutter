@@ -1925,10 +1925,13 @@ libmutter-clutter-16.so.0 libmutter-16-0 #MINVER#
  clutter_stage_view_notify_presented@Base 43.0
  clutter_stage_view_notify_ready@Base 43.0
  clutter_stage_view_peek_scanout@Base 43.0
+ clutter_stage_view_present@Base 48.7
+ clutter_stage_view_replace_framebuffer@Base 48.7
  clutter_stage_view_schedule_update@Base 43.0
  clutter_stage_view_schedule_update_now@Base 44~rc
  clutter_stage_view_set_color_state@Base 47~rc
  clutter_stage_view_set_output_color_state@Base 47~rc
+ clutter_stage_view_set_present_func@Base 48.7
  clutter_stage_view_take_accumulated_redraw_clip@Base 43.0
  clutter_stage_view_take_scanout@Base 43.0
  clutter_stage_window_get_type@Base 43.0
