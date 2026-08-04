@@ -15,3 +15,4 @@ anland/0007-backends-anland-Add-PipeWire-audio-bridge.patch
 anland/0008-backends-anland-Add-camera-service-and-integration-tests.patch
 anland/0009-backends-anland-Map-input-to-logical-output-coordinates.patch
 anland/0010-backends-anland-Release-StageView-before-mode-changes.patch
+anland/0011-backends-anland-Recover-from-consumer-activation-failures.patch
