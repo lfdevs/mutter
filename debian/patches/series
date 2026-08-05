@@ -18,3 +18,4 @@ anland/0010-backends-anland-Release-StageView-before-mode-changes.patch
 anland/0011-backends-anland-Recover-from-consumer-activation-failures.patch
 anland/0012-tests-wayland-unit-Wait-for-window-to-be-gone.patch
 anland/0013-backends-anland-Detach-consumer-before-stage-rebuilds.patch
+anland/0014-core-Select-Anland-backend-from-ANLAND_SOCKET.patch
