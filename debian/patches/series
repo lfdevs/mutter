@@ -20,3 +20,4 @@ anland/0012-tests-wayland-unit-Wait-for-window-to-be-gone.patch
 anland/0013-backends-anland-Detach-consumer-before-stage-rebuilds.patch
 anland/0014-core-Select-Anland-backend-from-ANLAND_SOCKET.patch
 anland/0015-wayland-Relax-Xwayland-socket-ownership-for-Anland.patch
+anland/0016-xwayland-Read-displayfd-readiness-data.patch
