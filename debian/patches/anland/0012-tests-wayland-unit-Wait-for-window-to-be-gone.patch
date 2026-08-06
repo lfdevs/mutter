@@ -1,0 +1,64 @@
+From: =?utf-8?q?Jonas_=C3=85dahl?= <jadahl@gmail.com>
+Date: Wed, 3 Sep 2025 10:28:13 +0200
+Subject: tests/wayland-unit: Wait for window to be gone before exiting some
+ tests
+
+The /wayland/toplevel/fixed-size-fullscreen-exceeds test was flaky
+because the window from the test before
+(/wayland/toplevel/fixed-size-fullscreen) would sometimes still be there
+when the second test ran. This caused the initial "wait for window to
+appear" statement to return too early, before the actual window
+appeared.
+
+Fix this by waiting on the window to disappear before exiting the
+previous test. Do the same for this test too, to avoid the same issue if
+we would add another test with the same test client after.
+
+Part-of: <https://gitlab.gnome.org/GNOME/mutter/-/merge_requests/4625>
+(cherry picked from commit be09c7fda4121d05e116e1388fabfeb551487c56)
+---
+ src/tests/wayland-unit-tests.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/src/tests/wayland-unit-tests.c b/src/tests/wayland-unit-tests.c
+index 984e79f..ae3569d 100644
+--- a/src/tests/wayland-unit-tests.c
++++ b/src/tests/wayland-unit-tests.c
+@@ -1499,6 +1499,8 @@ toplevel_fixed_size_fullscreen (void)
+ 
+   while (!(window = find_client_window ("fixed-size-client")))
+     g_main_context_iteration (NULL, TRUE);
++  g_object_add_weak_pointer (G_OBJECT (window), (gpointer *) &window);
++
+   while (meta_window_is_hidden (window))
+     g_main_context_iteration (NULL, TRUE);
+   meta_wait_for_effects (window);
+@@ -1519,6 +1521,9 @@ toplevel_fixed_size_fullscreen (void)
+   meta_wayland_test_client_finish (wayland_test_client);
+ 
+   meta_cursor_tracker_set_pointer_visible (cursor_tracker, TRUE);
++
++  while (window)
++    g_main_context_iteration (NULL, TRUE);
+ }
+ 
+ static void
+@@ -1535,6 +1540,8 @@ toplevel_fixed_size_fullscreen_exceeds (void)
+ 
+   while (!(window = find_client_window ("fixed-size-client")))
+     g_main_context_iteration (NULL, TRUE);
++  g_object_add_weak_pointer (G_OBJECT (window), (gpointer *) &window);
++
+   while (meta_window_is_hidden (window))
+     g_main_context_iteration (NULL, TRUE);
+   meta_wait_for_effects (window);
+@@ -1550,6 +1557,9 @@ toplevel_fixed_size_fullscreen_exceeds (void)
+   meta_wayland_test_driver_terminate (test_driver);
+   meta_wayland_test_client_finish (wayland_test_client);
+   g_test_assert_expected_messages ();
++
++  while (window)
++    g_main_context_iteration (NULL, TRUE);
+ }
+ 
+ static void
