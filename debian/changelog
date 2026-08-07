@@ -1,3 +1,28 @@
+mutter (48.7-90) unstable; urgency=medium
+
+  [ lfdevs ]
+  * backends/anland: Add current Anland transport
+  * backends/anland: Add headless native backend selection
+  * backends/anland: Add virtual output and reconnect state
+  * backends/anland: Render directly into consumer buffers
+  * backends/anland: Handle input and runtime refresh
+  * backends/anland: Bridge clipboard and text input
+  * backends/anland: Add PipeWire audio bridge
+  * backends/anland: Add camera service and integration tests
+  * debian/rules: enable anland backend
+  * debian: Add Anland StageView symbols
+  * backends/anland: Map input to logical output coordinates
+  * backends/anland: Release StageView before mode changes
+  * backends/anland: Recover from consumer activation failures
+  * backends/anland: Detach consumer before stage rebuilds
+  * core: Select Anland backend from ANLAND_SOCKET
+  * wayland: Relax Xwayland socket ownership for Anland
+  * xwayland: Read displayfd readiness data
+  * core: Continue X11 initialization without Anland session services
+  * backends/anland: Terminate text payloads before injection
+
+ -- lfdevs <lfdevs@lfdevs.com>  Fri, 07 Aug 2026 08:52:35 +0800
+
 mutter (48.7-0+deb13u1) trixie; urgency=medium
 
   * Team upload
