@@ -1,0 +1,229 @@
+From: lfdevs <lfdevs@lfdevs.com>
+Date: Sun, 2 Aug 2026 08:57:33 +0800
+Subject: backends/anland: Add headless native backend selection
+
+Add an opt-in Meson feature and enable it from Debian's patch queue build. The feature requires Mutter's native and Wayland backends.
+
+Add --anland as a mutually exclusive Wayland compositor mode. It constructs MetaBackendAnland with the existing native headless mode, preserving the no-launcher and no-libinput behavior while later commits attach the Anland transport.
+---
+ config.h.meson                            |  3 ++
+ meson.build                               |  6 ++++
+ meson.options                             |  6 ++++
+ src/backends/anland/meta-backend-anland.c | 22 +++++++++++++++
+ src/backends/anland/meta-backend-anland.h | 11 ++++++++
+ src/core/meta-context-main.c              | 46 +++++++++++++++++++++++++++++++
+ src/meson.build                           |  7 +++++
+ 7 files changed, 101 insertions(+)
+ create mode 100644 src/backends/anland/meta-backend-anland.c
+ create mode 100644 src/backends/anland/meta-backend-anland.h
+
+diff --git a/config.h.meson b/config.h.meson
+index 65794f2..b84ee1d 100644
+--- a/config.h.meson
++++ b/config.h.meson
+@@ -52,6 +52,9 @@
+ /* Define if you want to enable the native (KMS) backend based on systemd */
+ #mesondefine HAVE_NATIVE_BACKEND
+ 
++/* Define if the Anland display backend is enabled */
++#mesondefine HAVE_ANLAND
++
+ /* Define if you want to enable XWayland support */
+ #mesondefine HAVE_XWAYLAND
+ 
+diff --git a/meson.build b/meson.build
+index 14fb130..b3b2ebd 100644
+--- a/meson.build
++++ b/meson.build
+@@ -279,6 +279,11 @@ if have_native_backend
+   endif
+ endif
+ 
++have_anland = get_option('anland').enabled()
++if have_anland and not have_native_backend
++  error('The Anland backend requires the native backend')
++endif
++
+ is_ubuntu = run_command(
+   'grep', '-F', 'NAME="Ubuntu"', '/etc/os-release', check: false).returncode() == 0
+ snapd_support_dep = declare_dependency(
+@@ -569,6 +574,7 @@ cdata.set('HAVE_GLES2', have_gles2)
+ cdata.set('HAVE_XWAYLAND', have_xwayland)
+ cdata.set('HAVE_LOGIND', have_logind)
+ cdata.set('HAVE_NATIVE_BACKEND', have_native_backend)
++cdata.set('HAVE_ANLAND', have_anland)
+ cdata.set('HAVE_REMOTE_DESKTOP', have_remote_desktop)
+ cdata.set('HAVE_DEVKIT', have_devkit)
+ cdata.set('HAVE_GNOME_DESKTOP', have_gnome_desktop)
+diff --git a/meson.options b/meson.options
+index 4824a8c..aee9be7 100644
+--- a/meson.options
++++ b/meson.options
+@@ -46,6 +46,12 @@ option('native_backend',
+   description: 'Enable the native backend'
+ )
+ 
++option('anland',
++  type: 'feature',
++  value: 'disabled',
++  description: 'Enable the Anland display backend'
++)
++
+ option('remote_desktop',
+   type: 'boolean',
+   value: true,
+diff --git a/src/backends/anland/meta-backend-anland.c b/src/backends/anland/meta-backend-anland.c
+new file mode 100644
+index 0000000..ed710d3
+--- /dev/null
++++ b/src/backends/anland/meta-backend-anland.c
+@@ -0,0 +1,22 @@
++/* -*- mode: C; c-file-style: "gnu"; indent-tabs-mode: nil; -*- */
++
++#include "config.h"
++
++#include "backends/anland/meta-backend-anland.h"
++
++struct _MetaBackendAnland
++{
++  MetaBackendNative parent;
++};
++
++G_DEFINE_TYPE (MetaBackendAnland, meta_backend_anland, META_TYPE_BACKEND_NATIVE)
++
++static void
++meta_backend_anland_class_init (MetaBackendAnlandClass *klass)
++{
++}
++
++static void
++meta_backend_anland_init (MetaBackendAnland *backend_anland)
++{
++}
+diff --git a/src/backends/anland/meta-backend-anland.h b/src/backends/anland/meta-backend-anland.h
+new file mode 100644
+index 0000000..746e550
+--- /dev/null
++++ b/src/backends/anland/meta-backend-anland.h
+@@ -0,0 +1,11 @@
++/* -*- mode: C; c-file-style: "gnu"; indent-tabs-mode: nil; -*- */
++
++#pragma once
++
++#include "backends/native/meta-backend-native-private.h"
++
++#define META_TYPE_BACKEND_ANLAND (meta_backend_anland_get_type ())
++G_DECLARE_FINAL_TYPE (MetaBackendAnland,
++                      meta_backend_anland,
++                      META, BACKEND_ANLAND,
++                      MetaBackendNative)
+diff --git a/src/core/meta-context-main.c b/src/core/meta-context-main.c
+index 91cde41..538df69 100644
+--- a/src/core/meta-context-main.c
++++ b/src/core/meta-context-main.c
+@@ -39,6 +39,10 @@
+ #include "backends/native/meta-backend-native-types.h"
+ #endif
+ 
++#ifdef HAVE_ANLAND
++#include "backends/anland/meta-backend-anland.h"
++#endif
++
+ #ifdef HAVE_DEVKIT
+ #include "core/meta-mdk.h"
+ #endif
+@@ -53,6 +57,9 @@ typedef struct _MetaContextMainOptions
+   gboolean headless;
+   gboolean devkit;
+   GList *virtual_monitor_infos;
++#endif
++#ifdef HAVE_ANLAND
++  gboolean anland;
+ #endif
+   char *trace_file;
+   gboolean debug_control;
+@@ -92,6 +99,21 @@ check_configuration (MetaContextMain  *context_main,
+     }
+ #endif /* HAVE_NATIVE_BACKEND */
+ 
++#ifdef HAVE_ANLAND
++  if (context_main->options.anland &&
++      (context_main->options.display_server ||
++       context_main->options.headless
++#ifdef HAVE_DEVKIT
++       || context_main->options.devkit
++#endif
++      ))
++    {
++      g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
++                   "Can't run Anland with display server or headless mode");
++      return FALSE;
++    }
++#endif /* HAVE_ANLAND */
++
+   return TRUE;
+ }
+ 
+@@ -255,6 +277,19 @@ create_headless_backend (MetaContext  *context,
+                          NULL);
+ }
+ 
++#ifdef HAVE_ANLAND
++static MetaBackend *
++create_anland_backend (MetaContext  *context,
++                       GError      **error)
++{
++  return g_initable_new (META_TYPE_BACKEND_ANLAND,
++                         NULL, error,
++                         "context", context,
++                         "mode", META_BACKEND_NATIVE_MODE_HEADLESS,
++                         NULL);
++}
++#endif
++
+ static MetaBackend *
+ create_native_backend (MetaContext  *context,
+                        GError      **error)
+@@ -273,6 +308,10 @@ meta_context_main_create_backend (MetaContext  *context,
+   MetaContextMain *context_main = META_CONTEXT_MAIN (context);
+ 
+ #ifdef HAVE_NATIVE_BACKEND
++#ifdef HAVE_ANLAND
++  if (context_main->options.anland)
++    return create_anland_backend (context, error);
++#endif
+   if (context_main->options.headless ||
+       context_main->options.devkit)
+     return create_headless_backend (context, error);
+@@ -381,6 +420,13 @@ meta_context_main_add_option_entries (MetaContextMain *context_main)
+       &context_main->options.headless,
+       N_("Run as a headless display server")
+     },
++#ifdef HAVE_ANLAND
++    {
++      "anland", 0, 0, G_OPTION_ARG_NONE,
++      &context_main->options.anland,
++      N_("Run with the Anland display backend")
++    },
++#endif
+     {
+       "virtual-monitor", 0, 0, G_OPTION_ARG_CALLBACK,
+       add_virtual_monitor_cb,
+diff --git a/src/meson.build b/src/meson.build
+index 04aef85..18b1bb4 100644
+--- a/src/meson.build
++++ b/src/meson.build
+@@ -825,6 +825,13 @@ if have_native_backend
+   ]
+ endif
+ 
++if have_anland
++  mutter_sources += [
++    'backends/anland/meta-backend-anland.c',
++    'backends/anland/meta-backend-anland.h',
++  ]
++endif
++
+ if have_devkit
+   mutter_sources += [
+     'core/meta-mdk.c',
