@@ -7,13 +7,18 @@ playback and capture streams without introducing private shared-memory messages.
 
 Duplicate the audio fd for the worker, detach it before transport teardown, and
 keep PipeWire failures isolated from the display and input backend.
+
+Keep the speaker node processing while unlinked and send a short zero-filled
+PCM message whenever PipeWire has no audio data. Disable PipeWire and session
+idle suspension for that node so the Android playback stream stays active until
+the desktop audio graph begins producing PCM.
 ---
  meson.build                               |   2 +-
- src/backends/anland/meta-anland-audio.c   | 650 ++++++++++++++++++++++++++++++
+ src/backends/anland/meta-anland-audio.c   | 665 ++++++++++++++++++++++++++++++
  src/backends/anland/meta-anland-audio.h   |  11 +
  src/backends/anland/meta-backend-anland.c |  11 +
  src/meson.build                           |   9 +-
- 5 files changed, 681 insertions(+), 2 deletions(-)
+ 5 files changed, 696 insertions(+), 2 deletions(-)
  create mode 100644 src/backends/anland/meta-anland-audio.c
  create mode 100644 src/backends/anland/meta-anland-audio.h
 
@@ -32,10 +37,10 @@ index 3e8807a..8b37633 100644
  
 diff --git a/src/backends/anland/meta-anland-audio.c b/src/backends/anland/meta-anland-audio.c
 new file mode 100644
-index 0000000..f9e87e6
+index 0000000..43862fa
 --- /dev/null
 +++ b/src/backends/anland/meta-anland-audio.c
-@@ -0,0 +1,650 @@
+@@ -0,0 +1,665 @@
 +/* -*- mode: C; c-file-style: "gnu"; indent-tabs-mode: nil; -*- */
 +
 +#include "config.h"
@@ -70,6 +75,8 @@ index 0000000..f9e87e6
 +#define MAX_AUDIO_RATE   384000
 +#define MAX_AUDIO_CHANNELS     2
 +#define MAX_AUDIO_QUANTUM  65536
++#define KEEPALIVE_FRAMES       480
++#define KEEPALIVE_BYTES        (KEEPALIVE_FRAMES * DEFAULT_PLAY_CHANNELS * (int) sizeof (int16_t))
 +
 +struct _MetaAnlandAudio
 +{
@@ -100,6 +107,8 @@ index 0000000..f9e87e6
 +  size_t ring_head;
 +  size_t ring_tail;
 +  size_t ring_fill;
++
++  uint8_t silence[KEEPALIVE_BYTES];
 +
 +  uint8_t rx[MAX_DGRAM];
 +  bool loop_started;
@@ -178,17 +187,24 @@ index 0000000..f9e87e6
 +    return;
 +
 +  data = &buffer->buffer->datas[0];
-+  if (data->data && data->chunk && data->chunk->size > 0 &&
-+      audio->audio_fd >= 0)
++  if (audio->audio_fd >= 0)
 +    {
++      const uint8_t *payload = audio->silence;
++      size_t payload_size = sizeof (audio->silence);
++
++      if (data->data && data->chunk && data->chunk->size > 0)
++        {
++          payload = (uint8_t *) data->data + data->chunk->offset;
++          payload_size = data->chunk->size;
++        }
++
 +      struct audio_msg header = {
 +        .type = AUDIO_MSG_PCM,
-+        .size = data->chunk->size,
++        .size = payload_size,
 +      };
 +      struct iovec iov[2] = {
 +        { .iov_base = &header, .iov_len = sizeof (header) },
-+        { .iov_base = (uint8_t *) data->data + data->chunk->offset,
-+          .iov_len = data->chunk->size },
++        { .iov_base = (void *) payload, .iov_len = payload_size },
 +      };
 +      struct msghdr message = {
 +        .msg_iov = iov,
@@ -495,6 +511,10 @@ index 0000000..f9e87e6
 +                       PW_KEY_NODE_DESCRIPTION, "Anland remote speaker",
 +                       PW_KEY_PRIORITY_SESSION, "1010",
 +                       PW_KEY_PRIORITY_DRIVER, "1010",
++                       PW_KEY_NODE_ALWAYS_PROCESS, "true",
++                       PW_KEY_NODE_PAUSE_ON_IDLE, "false",
++                       PW_KEY_NODE_SUSPEND_ON_IDLE, "false",
++                       "session.suspend-timeout-seconds", "0",
 +                       NULL));
 +  if (!audio->capture)
 +    return -1;
