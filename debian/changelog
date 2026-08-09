@@ -1,3 +1,10 @@
+mutter (48.7-91) unstable; urgency=medium
+
+  * backends/anland: Keep PipeWire speaker stream alive
+  * backends/anland: Prefer consumer clipboard on reconnect
+
+ -- lfdevs <lfdevs@lfdevs.com>  Sun, 09 Aug 2026 15:42:35 +0800
+
 mutter (48.7-90) unstable; urgency=medium
 
   [ lfdevs ]
