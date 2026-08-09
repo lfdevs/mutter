@@ -1,3 +1,13 @@
+mutter (50.1-0ubuntu91) resolute; urgency=medium
+
+  * Add an opt-in Anland display backend
+  * debian/rules: enable anland backend
+  * debian: Add Anland StageView symbols
+  * backends/anland: Prefer consumer clipboard on reconnect
+  * wayland: Update activation environment after session initialization
+
+ -- lfdevs <lfdevs@lfdevs.com>  Sun, 09 Aug 2026 15:49:01 +0800
+
 mutter (50.1-0ubuntu2.2) resolute; urgency=medium
 
   * d/p: Fix same-window drag-and-drop on touchscreen (LP: #2151278)
