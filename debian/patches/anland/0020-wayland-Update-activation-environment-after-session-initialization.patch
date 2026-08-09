@@ -1,0 +1,31 @@
+From: lfdevs <lfdevs@lfdevs.com>
+Date: Sun, 9 Aug 2026 13:23:32 +0800
+Subject: wayland: Update activation environment after session initialization
+
+The standalone gnome-session-service used in a Chroot without a user systemd manager can finish initialization before GNOME Shell starts. Its Setenv request then fails with NotInInitialization, leaving the D-Bus activation environment inherited from dbus-run-session without DISPLAY or XAUTHORITY. D-Bus-activated applications such as Ptyxis consequently cannot launch X11 clients.
+
+Treat that response like an unavailable session manager and update the D-Bus activation environment directly. Normal session-manager initialization remains unchanged, while later D-Bus activations receive the Xwayland environment.
+---
+ src/wayland/meta-wayland.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/src/wayland/meta-wayland.c b/src/wayland/meta-wayland.c
+index cc303d3..90f4fbf 100644
+--- a/src/wayland/meta-wayland.c
++++ b/src/wayland/meta-wayland.c
+@@ -774,11 +774,13 @@ set_gnome_env (const char *name,
+       g_autofree char *remote_error = NULL;
+ 
+       remote_error = g_dbus_error_get_remote_error (error);
+-      if (g_strcmp0 (remote_error, "org.freedesktop.DBus.Error.NameHasNoOwner") == 0)
++      if (g_strcmp0 (remote_error, "org.freedesktop.DBus.Error.NameHasNoOwner") == 0 ||
++          g_strcmp0 (remote_error,
++                     "org.gnome.SessionManager.NotInInitialization") == 0)
+         {
+           return update_activation_environment (session_bus, name, value);
+         }
+-      else if (g_strcmp0 (remote_error, "org.gnome.SessionManager.NotInInitialization") != 0)
++      else
+         {
+           g_warning ("Failed to set environment variable %s for gnome-session: %s",
+                      name, error->message);
